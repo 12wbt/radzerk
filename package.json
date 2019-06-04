@@ -1,0 +1,39 @@
+{
+  "name": "radzerk",
+  "version": "0.0.1",
+  "description": "Red Ant's Adzerk Replacement",
+  "main": "ra-radzerk.js",
+  "directories": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/red-ant/radzerk.git"
+  },
+  "keywords": [
+    "angular",
+    "angularjs",
+    "adzerk"
+  ],
+  "author": "Dan Callaghan",
+  "license": "BSD-2-Clause",
+  "bugs": {
+    "url": "https://github.com/red-ant/radzerk/issues"
+  },
+  "devDependencies": {
+    "grunt": "^0.4.5",
+    "grunt-contrib-clean": "^0.6.0",
+    "grunt-contrib-concat": "^0.5.0",
+    "grunt-contrib-jshint": "^0.10.0",
+    "grunt-contrib-uglify": "^0.5.1",
+    "grunt-ngmin": "0.0.3",
+    "grunt-contrib-watch": "^0.6.1",
+    "load-grunt-tasks": "^0.6.0",
+    "grunt-bower": "^0.13.4",
+    "karma": "^0.12.19",
+    "grunt-karma": "^0.8.3",
+    "karma-chrome-launcher": "^0.1.4",
+    "karma-phantomjs-launcher": "^0.1.4",
+    "karma-jasmine": "^0.1.5"
+  }
+}

@@ -1,0 +1,284 @@
+<script type="text/javascript">
+$(function() {
+  var ads    = {{Radzerk Ads}},
+      config = {{Radzerk Config}};
+
+  var Radzerk = (function(config) {
+    // An array of active Radzerk ads
+    var active = [];
+
+    // Default configuration
+    config = $.extend({
+      selector:  '.radzerk', // For finding ad placements
+      debug:     false,      // Enable debug mode
+      autoload:  false,      // Automatically or manually trigger ads?
+      container: 'body'      // Restrict ad container selection to an element
+    }, config);
+
+    function push(selector) {
+      debug('=================');
+      debug('Searching for', selector || config.selector);
+
+      // Select ad containers
+      var ad_containers = $(config.container).find(selector || config.selector);
+      if (ad_containers.length === 0) {
+        return;
+      }
+
+      debug('Found', ad_containers.length, 'container(s)');
+
+      ad_containers.each(function(index) {
+        var $el = $(this);
+
+        // Skip already inited ads
+        if ($el.data('radzerked') !== undefined) {
+          return false;
+        }
+
+        // Make sure element has a unique id
+        if (!$el.attr('id')) {
+          var id = 'radz' + index;
+
+          while ($('#' + id).length) {
+            id = 'razk' + Math.floor(Math.random() * 10000);
+          }
+
+          $el.attr('id', id);
+          debug('Giving element', $el, 'id of', id);
+        }
+
+        // Grab the data attributes
+        var data = $el.data();
+
+        // Required attributes are
+        // data-size, data-zone
+        if (!data.size || !data.zone) {
+          debug('No size or zone data found for element', $el, data);
+          return false;
+        }
+
+        debug('Looking for data for zone "'+ data.zone +'" with size "'+ data.size +'"');
+
+        // Get the zone data
+        var zone = config.zones[data.zone];
+        if (!zone || zone && !zone[data.size]) {
+          debug('No zone data found in', config.zones);
+          return false;
+        }
+
+        // Get the ad slugs from the zone
+        var slugs = zone[data.size];
+
+        // Make sure the slugs are an array
+        if (!$.isArray(slugs)) {
+          slugs = [slugs];
+        }
+
+        // Convert keywords to an array
+        if (data.keywords) {
+          data.keywords = data.keywords.split(',');
+        }
+
+        debug('Getting ads for slugs', slugs);
+
+        var ad_data = getAd(slugs, data.size, data.keywords);
+        if (!ad_data) {
+          return false;
+        }
+
+        debug('Attaching ad');
+
+        // Attach the ad
+        var ad  = $('<a>'),
+            img = $('<img>');
+
+        ad.attr('href', ad_data.link);
+        img.attr('src', ad_data.src);
+
+        if (ad_data.new_window) {
+          ad.attr('target', '_blank');
+        }
+
+        $el.append(ad.append(img));
+        $el.data('radzerked', true);
+        $el.trigger('radzerk:init', ad_data);
+
+        ad.click(function() {
+          var gtm_data = $.extend(
+            { event: 'RadzerkClick' },
+            data
+          );
+
+          dataLayer.push(gtm_data);
+
+          debug('RadzerkClick fired', data);
+        });
+
+        active.push(ad_data);
+      });
+    }
+
+    function getAd(slugs, size, keywords) {
+      // Get the ad from the ad data, make sure that it
+      // is valid and set the requested size.
+      var matches = $.map(slugs, function(slug) {
+        return getAdFromSlug(slug, size, keywords);
+      });
+
+      // Prioritise matches
+      matches.sort(weight);
+
+      // Rejects ads with lower priorities than the first match
+      var priority,
+          match;
+
+      matches = $.map(matches, function(match) {
+        if (!priority) {
+          priority = match.priority;
+          return match;
+        } else if (priority === match.priority) {
+          return match;
+        }
+      });
+
+      debug('-----');
+      debug('Ad matches', matches);
+
+      if (matches.length === 1) {
+        match = matches[0];
+        debug('Picked first ad', match);
+      } else if (matches.length > 1) {
+        match = matches[Math.floor(Math.random() * matches.length)];
+        debug('Plucked random ad', match);
+      }
+
+      return match;
+    }
+
+    function getAdFromSlug(slug, size, keywords) {
+      debug('-----');
+      debug('Getting ad, slug: "'+ slug +'", size: "'+ size +'", with keywords', keywords);
+      debug('Slug found', !!ads[slug]);
+
+      if (ads[slug]) {
+        var ad  = ads[slug];
+        ad.slug = slug;
+
+        if (valid(ad, keywords) && setSize(ad, size)) {
+          return ad;
+        }
+      }
+    }
+
+    function valid(ad, keywords) {
+      if (ad.start) {
+        var start_date = parseDate(ad.start);
+
+        if (start_date.getTime() > now()) {
+          debug('Before start time');
+          return false;
+        }
+      }
+
+      if (ad.end) {
+        var end_date = parseDate(ad.end);
+
+        if (end_date.getTime() < now()) {
+          debug('After end time');
+          return false;
+        }
+      }
+
+      if (ad.keywords) {
+        var matches = true;
+        debug('Ad keywords:', ad.keywords);
+        debug('Placement keywords:', keywords);
+
+        $.each(ad.keywords, function(i, keyword) {
+          debug('-', keyword, 'matches', $.inArray(keyword, keywords) > -1);
+
+          if ($.inArray(keyword, keywords) === -1) {
+            matches = false;
+            return false;
+          }
+        });
+
+        debug('Keyword matches', matches);
+        return matches;
+      }
+
+      debug('Valid');
+      return true;
+    }
+
+    function setSize(ad, size) {
+      var src = ad.sizes && ad.sizes[size];
+      if (src) {
+        ad.size = size;
+        ad.src  = src;
+      }
+
+      debug('Size found', !!src);
+      return !!src;
+    }
+
+    function now() {
+      return new Date().getTime();
+    }
+
+    function parseDate(date_string) {
+      return new Date(date_string);
+    }
+
+    function weight(a, b) {
+      a.priority = a.priority || 1;
+      b.priority = b.priority || 1;
+
+      if (a.priority < b.priority) {
+        return -1;
+      }
+      if (a.priority > b.priority) {
+        return 1;
+      }
+      return 0;
+    }
+
+    function debug() {
+      if (config.debug) {
+        var args = Array.prototype.slice.call(arguments, 0);
+        args.unshift('Radzerk:');
+
+        console.info.apply(console, args);
+      }
+    }
+
+    if (config.autoload) {
+      push();
+    }
+
+    // Public interface
+    return {
+      push:   push,
+      config: config,
+      getAd:  getAd,
+      getActive: function() {
+        return active;
+      },
+      debug: function() {
+        config.debug = true;
+      }
+    };
+  })(config);
+
+  // If Radzerk has already been defined as an array
+  // autoload the elements in the array
+  if ($.isArray(window.Radzerk)) {
+    while (window.Radzerk.length > 0) {
+      var sel = window.Radzerk.splice(0, 1);
+      Radzerk.push(sel);
+    }
+  }
+
+  window.Radzerk = Radzerk;
+});
+</script>

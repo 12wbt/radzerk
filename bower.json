@@ -1,0 +1,25 @@
+{
+  "name": "radzerk",
+  "version": "0.0.1",
+  "main": "ra-radzerk.js",
+  "ignore": [
+    "**/.*",
+    "components",
+    "node_modules",
+    "src",
+    "test",
+    "templates",
+    "Gruntfile.js",
+    "karma.conf.js",
+    "bower.json",
+    "package.json",
+    "LICENSE"
+  ],
+  "dependencies": {
+    "angular": "~1.2.0"
+  },
+  "devDependencies": {
+    "angular-mocks": "~1.2.0",
+    "angular-scenario": "~1.2.0"
+  }
+}
